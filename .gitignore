@@ -1,6 +1,8 @@
+/SteamKit/
+/SteamChat/
 
 
-SteamKit/
-SteamChat/
+.vs
+.vscode
 
-
+Properties/launchSettings.json
