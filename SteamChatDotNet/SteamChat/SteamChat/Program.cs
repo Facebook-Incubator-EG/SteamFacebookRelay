@@ -7,6 +7,7 @@ using SteamKit2;
 using SteamKit2.Internal;
 using SteamKit2.Unified.Internal;
 
+
 //
 // Sample 5: SteamGuard
 //
@@ -37,8 +38,8 @@ using SteamKit2.Unified.Internal;
 // 2. logon to account using username, password, and sha-1 hash of the sentry file
 
 
-namespace Sample5_SteamGuard
-{
+namespace SteamChat {
+
     class Program
     {
         static SteamClient steamClient;
@@ -50,6 +51,8 @@ namespace Sample5_SteamGuard
         static SteamUnifiedMessages.UnifiedService<IPlayer> playerService;
         static SteamUnifiedMessages.UnifiedService<IChatRoom> chatRoomService;
         static SteamUnifiedMessages.UnifiedService<IChatRoomClient> chatRoomClientService;
+
+        static PipeHandler pipeHandler = new PipeHandler();
         
 
         static bool isRunning;
@@ -57,6 +60,8 @@ namespace Sample5_SteamGuard
         static string user, pass;
         static string authCode, twoFactorAuth;
 
+        static ulong myGroupId = 7643625;
+        static ulong defualtChatId = 24932502;
 
         static void Main(string[] args) {
             if (args.Length < 2) {
@@ -307,8 +312,6 @@ namespace Sample5_SteamGuard
 
         static JobID myJobID = JobID.Invalid;
 
-        static ulong myGroupId = 7643625;
-        static ulong defualtChatId = 24932502;
 
         static void ProcessMyJob(SteamUnifiedMessages.ServiceMethodResponse callback) {
 
@@ -356,7 +359,19 @@ namespace Sample5_SteamGuard
             
 
         }
-        private static void OnIncomingChatMessage(CChatRoom_IncomingChatMessage_Notification notification) {
+
+        private static async Task SendMessageToGroupChat(string message) {
+
+            CChatRoom_SendChatMessage_Request request = new CChatRoom_SendChatMessage_Request {
+                chat_group_id = myGroupId,
+                chat_id = defualtChatId,
+                message = message
+            };
+
+            await chatRoomService.SendMessage(x => x.SendChatMessage(request));
+        }
+
+        private static async Task OnIncomingChatMessage(CChatRoom_IncomingChatMessage_Notification notification) {
 
             Console.WriteLine($"from: {notification.steamid_sender}\n message : {notification.message} \n");
 
@@ -367,15 +382,16 @@ namespace Sample5_SteamGuard
                     message = "pong"
                 };
 
-                //await chatRoomService.SendMessage(x => x.SendChatMessage(request));
+                await chatRoomService.SendMessage(x => x.SendChatMessage(request));
             }
 
+            pipeHandler.RelayMessage(notification);
         }
 
-        static private async void OnServiceMethod(SteamUnifiedMessages.ServiceMethodNotification notification) {
+        private static async void OnServiceMethod(SteamUnifiedMessages.ServiceMethodNotification notification) {
             switch (notification.MethodName) {
                 case "ChatRoomClient.NotifyIncomingChatMessage#1":
-                    await OnIncomingChatMessage((CChatRoom_IncomingChatMessage_Notification)notification.Body).ConfigureAwait(false);
+                    await OnIncomingChatMessage((CChatRoom_IncomingChatMessage_Notification)notification.Body);
 
                     break;
             }
